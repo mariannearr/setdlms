@@ -547,6 +547,11 @@
       min-width: 880px;
     }
 
+    .compact-table.is-compact-result {
+      max-width: 720px;
+      min-width: 560px;
+    }
+
     .compact-table th,
     .compact-table td {
       border-bottom: 1px solid var(--line);
@@ -748,7 +753,7 @@
       <div class="container is-readable content">
         <h2>The One-Line Idea</h2>
         <p class="lead">
-          Diffusion language models can generate many tokens in parallel, but standard masked diffusion usually gives up variable-length generation and KV caching. Block diffusion recovers some of that structure by generating blocks left-to-right. Set diffusion keeps the cacheability of an autoregressive factorization, but replaces fixed blocks with flexible token sets.
+          Diffusion language models can generate many tokens in parallel, but standard masked diffusion is usually fixed-length and cannot reuse a KV cache. Block diffusion restores variable-length, cacheable generation by decoding contiguous blocks left-to-right. Set diffusion keeps the autoregressive factorization, but replaces fixed blocks with flexible-position, flexible-length token sets.
         </p>
       </div>
     </section>
@@ -757,10 +762,10 @@
       <div class="container is-readable content">
         <h2>Why Blocks Are Not Enough</h2>
         <p>
-          Block diffusion models a sequence as a left-to-right sequence of contiguous blocks. This is already a useful bridge between autoregressive and diffusion language models: tokens inside a block can be denoised in parallel, and completed blocks can be cached.
+          Block diffusion models a sequence as a left-to-right sequence of contiguous blocks. It is already a useful bridge between autoregressive and diffusion language models: tokens inside a block can be denoised in parallel, and completed blocks can be cached.
         </p>
         <p>
-          The limitation is that the block structure is rigid. A model cannot naturally insert tokens at arbitrary positions, choose differently sized groups of tokens, or update the cache until the whole current block is finished. That is awkward for infilling and leaves parallelism on the table.
+          The limitation is the fixed block structure. A model cannot naturally insert tokens at arbitrary positions, choose differently sized groups of tokens, or update the cache until the whole current block has been decoded. That restricts infilling, arbitrary-position editing, and parallel sampling.
         </p>
       </div>
     </section>
@@ -769,7 +774,7 @@
       <div class="container is-readable content">
         <h2>Set Diffusion</h2>
         <p>
-          Set diffusion factorizes generation over token sets \( \sigma_1, \ldots, \sigma_N \). Each set selects positions, and the model predicts the token values at those positions conditioned on earlier revealed sets. Marginalizing over possible set orderings gives:
+          Set diffusion models a sequence by marginalizing over generation orders of position sets. A position set \( \sigma_n \) is a nonempty subset of token positions; the sets are disjoint and together cover the whole sequence. At step \( n \), an order policy selects the next positions, and a diffusion model predicts their token values conditioned on earlier revealed sets:
         </p>
         <div class="formula">
           \[
@@ -780,7 +785,7 @@
           \]
         </div>
         <p>
-          This recovers several familiar cases. Single left-to-right tokens recover autoregression. Uniform random positions recover order-agnostic masked diffusion. Fixed contiguous left-to-right sets recover block diffusion. The useful middle ground is everything in between.
+          This factorization contains several familiar cases. Single left-to-right tokens recover autoregression. Uniform random positions recover order-agnostic masked diffusion. Fixed contiguous left-to-right sets recover block diffusion. The useful middle ground is everything in between.
         </p>
         <div class="method-grid">
           <div class="method-card">
@@ -803,10 +808,10 @@
       <div class="container is-readable content">
         <h2>Interpolating Token Orderings</h2>
         <p>
-          The ordering distribution \( \pi(\sigma) \) is induced by reveal times. Each position \( \ell \) gets a random reveal time \( R_\ell \), with CDF \( \Pr(R_\ell \le \tau) = \alpha^\ell_\tau \). Sorting these reveal times produces a generation order.
+          Instead of parameterizing the ordering distribution \( \pi(\sigma) \) directly, set diffusion samples reveal times. Let \( \tau \in [0,1] \) denote normalized ordering time. Each position \( \ell \) has a monotone schedule \( \alpha^\ell_\tau \), where \( \alpha^\ell_\tau = \Pr(R_\ell \le \tau) \) is the probability that position \( \ell \) has been revealed by time \( \tau \). Sorting the sampled reveal times \( R_\ell \) produces a generation order; ties form token sets.
         </p>
         <p>
-          Position-offset schedules bias generation left-to-right with an active window of width \( w \). Small \( w \) means little overlap between positions, so generation becomes AR-like. Large \( w \) means many positions are eligible together, so generation becomes closer to order-agnostic diffusion.
+          Position-offset schedules shift each position's active generation interval along the sequence. The interval width \( w \) controls the ordering bias: as \( w \) approaches \( 1/L \), the order concentrates on left-to-right generation; as \( w \) grows, more positions are eligible together, increasing parallelism and moving toward order-agnostic diffusion.
         </p>
         <div class="figure">
           <img src="static/images/ordering-schedules.png?v=source-pdf-1" alt="Reveal-time CDFs interpolating from autoregression through Sliding-Window SetDLM to MDLM">
@@ -821,10 +826,10 @@
       <div class="container is-readable content">
         <h2>Sliding-Window SetDLM</h2>
         <p>
-          SW-SetDLM is the practical instantiation used in the paper. It uses a position-offset ordering distribution, a set-causal transformer, and a sliding output window. At inference time, candidate positions inside the active window are denoised in parallel; accepted tokens are committed and then appended to the KV cache.
+          SW-SetDLM is the practical instantiation used in the paper. It combines a position-offset ordering distribution, a factorized token-set likelihood, and a set-causal transformer. At inference time, a sliding output window selects positions whose active intervals contain the current ordering time; those candidates are denoised in parallel, accepted tokens are committed, and their keys and values are appended to the cache before the next step.
         </p>
         <p>
-          For efficiency, training specializes to singleton token sets: sample a full ordering, then compute all \( L \) conditional token likelihoods in one causal forward pass,
+          For low-variance, token-efficient training, SW-SetDLM specializes to singleton token sets. It samples a full ordering, then computes all \( L \) conditional token likelihoods in one causal forward pass,
         </p>
         <div class="formula">
           \[
@@ -836,7 +841,7 @@
           \]
         </div>
         <p>
-          This keeps training token-efficient while still teaching the model to decode under position-biased orders. At inference, SW-SetDLM can decode flexible-position sets with a left-to-right bias rather than being locked to fixed block boundaries.
+          This teaches the model the position-biased orders used at inference, while keeping the training objective close to a standard causal language-modeling pass. At inference, the same model can decode flexible-position sets instead of being locked to fixed block boundaries.
         </p>
       </div>
     </section>
@@ -845,50 +850,52 @@
       <div class="container is-wide-readable content">
         <h2>Results</h2>
         <p class="lead">
-          The main empirical story is the speed-quality tradeoff. On GSM8K, SW-SetDLM improves the diffusion Pareto frontier relative to block diffusion, with higher accuracy and higher throughput at comparable prediction budgets.
+          The main empirical story is a better speed-quality tradeoff. On GSM8K, SW-SetDLM improves the diffusion Pareto frontier relative to block diffusion, with higher accuracy and higher throughput at comparable prediction budgets.
         </p>
         <div class="figure">
           <img src="static/images/gsm8k-tradeoff.png?v=help-pdf-1" alt="GSM8K speed-accuracy tradeoff showing SW-SetDLM above block diffusion">
         </div>
-        <table class="compact-table" aria-label="GSM8K compact result table">
-          <thead>
-            <tr>
-              <th>Model</th>
-              <th>PPL (&darr;)</th>
-              <th>0-shot pass@1 (&uarr;)</th>
-              <th>Tput (&uarr;)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>AR Transformer</td>
-              <td>1.25</td>
-              <td>75.74</td>
-              <td>67.16</td>
-            </tr>
-            <tr>
-              <td>MDLM</td>
-              <td>&le; 2.10</td>
-              <td>6.37</td>
-              <td>&ge; 24.48</td>
-            </tr>
-            <tr>
-              <td>BD3LM, S = 4</td>
-              <td>&le; 1.41</td>
-              <td>63.53</td>
-              <td>&ge; 55.39</td>
-            </tr>
-            <tr>
-              <td><strong>SW-SetDLM, S &le; 8</strong></td>
-              <td>&le; 1.42</td>
-              <td class="best">66.41</td>
-              <td class="best">&ge; 60.42</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="GSM8K compact result table" tabindex="0">
+          <table class="compact-table is-compact-result" aria-label="GSM8K compact result table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>PPL (&darr;)</th>
+                <th>0-shot pass@1 (&uarr;)</th>
+                <th>Tput (&uarr;)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>AR Transformer</td>
+                <td>1.25</td>
+                <td>75.74</td>
+                <td>67.16</td>
+              </tr>
+              <tr>
+                <td>MDLM</td>
+                <td>&le; 2.10</td>
+                <td>6.37</td>
+                <td>&ge; 24.48</td>
+              </tr>
+              <tr>
+                <td>BD3LM, S = 4</td>
+                <td>&le; 1.41</td>
+                <td>63.53</td>
+                <td>&ge; 55.39</td>
+              </tr>
+              <tr>
+                <td><strong>SW-SetDLM, S &le; 8</strong></td>
+                <td>&le; 1.42</td>
+                <td class="best">66.41</td>
+                <td class="best">&ge; 60.42</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <h3>Infilling</h3>
         <p>
-          Infilling is where the flexible-position view matters most. The paper evaluates 1,871 five-sentence ROCStories examples, masking either one middle sentence or three middle sentences and asking the model to fill the gap from the remaining context. SW-SetDLM improves over block diffusion because it can decode positions inside the missing span without being locked to fixed left-to-right blocks, while still using KV-cacheable inference. Against BD3LM, it raises one-sentence ROUGE-L from 8.6 to 10.9 while increasing throughput from &ge; 105.8 to &ge; 132.0 tokens/sec; for three-sentence infilling, ROUGE-L rises from 11.1 to 13.2 with throughput &ge; 123.1 versus &ge; 114.2. MDLM reaches higher ROUGE, but the paper notes that it is much slower because it recomputes a full context at every denoising step.
+          Infilling directly tests flexible-position decoding. The paper evaluates 1,871 five-sentence ROCStories examples, masking one or three middle sentences and filling the gap from the remaining context. Against BD3LM, SW-SetDLM raises one-sentence ROUGE-L from 8.6 to 10.9 while increasing throughput from &ge; 105.8 to &ge; 132.0 tokens/sec; for three-sentence infilling, ROUGE-L rises from 11.1 to 13.2 with throughput &ge; 123.1 versus &ge; 114.2. MDLM reaches higher ROUGE, but is substantially slower because it lacks KV caching and recomputes the full 1024-token context at every denoising step.
         </p>
         <div class="table-scroll" role="region" aria-label="ROCStories infilling results table" tabindex="0">
           <table class="compact-table is-wide-result" aria-label="ROCStories infilling ROUGE and throughput results">
@@ -998,11 +1005,11 @@
           </div>
           <div class="result-note">
             <strong>Summarization</strong>
-            <p>On CNN/DailyMail, SW-SetDLM keeps competitive ROUGE and improves throughput over block diffusion.</p>
+            <p>On CNN/DailyMail, SW-SetDLM keeps competitive ROUGE and decodes up to 10% faster than block diffusion.</p>
           </div>
           <div class="result-note">
             <strong>Generation</strong>
-            <p>On unconditional generation, set diffusion improves the quality-speed tradeoff among diffusion language models.</p>
+            <p>On unconditional generation, SW-SetDLM improves MAUVE over block diffusion while decoding faster.</p>
           </div>
         </div>
       </div>
