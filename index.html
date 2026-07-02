@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Set Diffusion language models interpolate token orderings between autoregression and diffusion for fast, flexible decoding.">
+  <meta name="keywords" content="set diffusion, SW-SetDLM, Sliding-Window SetDLM, diffusion language models, autoregression, token ordering">
+  <meta property="og:title" content="Set Diffusion">
+  <meta property="og:description" content="Interpolating token orderings between autoregression and diffusion for fast and flexible decoding.">
+  <meta property="og:url" content="https://mariannearr.github.io/setdlms/">
+  <meta property="og:image" content="static/images/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Set Diffusion">
+  <meta name="twitter:description" content="Fast and flexible decoding by generating flexible-position token sets.">
+  <meta name="twitter:image" content="static/images/social-card.png">
+
+  <title>Set Diffusion</title>
+  <link rel="icon" type="image/png" href="static/images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      --ink: #142642;
+      --muted: #5d6b82;
+      --line: #dfe5ee;
+      --soft: #f6f8fb;
+      --accent: #1f7a4f;
+      --accent-2: #d77b22;
+      --blue: #1f68b7;
+    }
+
+    html {
+      background: #ffffff;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      color: var(--ink);
+      font-family: "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    .container {
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+    }
+
+    .has-text-centered {
+      text-align: center;
+    }
+
+    .button {
+      align-items: center;
+      border: 0;
+      display: inline-flex;
+      gap: 0.45rem;
+      justify-content: center;
+      line-height: 1.2;
+      min-height: 2.5rem;
+      text-decoration: none;
+    }
+
+    .icon {
+      align-items: center;
+      display: inline-flex;
+      justify-content: center;
+    }
+
+    .hero {
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(246, 248, 251, 0.95), rgba(255, 255, 255, 1)),
+        radial-gradient(circle at top left, rgba(31, 122, 79, 0.12), transparent 32%);
+    }
+
+    .hero-body {
+      padding: 4.5rem 1.5rem 2.5rem;
+    }
+
+    .container.is-readable {
+      max-width: 860px;
+    }
+
+    .container.is-wide-readable {
+      max-width: 1120px;
+    }
+
+    .publication-title {
+      color: var(--ink);
+      font-family: "Google Sans", "Noto Sans", sans-serif;
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.08;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle.publication-subtitle {
+      color: var(--muted);
+      font-size: 1.18rem;
+      margin: 0 auto 1.25rem;
+      max-width: 780px;
+    }
+
+    .publication-authors,
+    .publication-meta {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .publication-flag {
+      color: var(--accent);
+      font-weight: 700;
+      margin: 1.15rem 0;
+    }
+
+    .link-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      justify-content: center;
+      margin-top: 1.25rem;
+    }
+
+    .button.is-dark {
+      background: var(--ink);
+      border-radius: 999px;
+      font-weight: 650;
+      padding-left: 1.05rem;
+      padding-right: 1.05rem;
+    }
+
+    .teaser {
+      padding: 2.25rem 1.5rem 1.5rem;
+    }
+
+    .teaser img,
+    .figure img {
+      display: block;
+      height: auto;
+      margin: 0 auto;
+      max-width: 100%;
+    }
+
+    .teaser img {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 48px rgba(20, 38, 66, 0.10);
+      width: min(100%, 1120px);
+    }
+
+    .caption {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0.85rem auto 0;
+      max-width: 900px;
+      text-align: center;
+    }
+
+    .section {
+      padding: 3.1rem 1.5rem;
+    }
+
+    .section.is-soft {
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+      border-top: 1px solid var(--line);
+    }
+
+    .content h2 {
+      color: var(--ink);
+      font-family: "Google Sans", "Noto Sans", sans-serif;
+      font-size: 1.75rem;
+      letter-spacing: 0;
+      margin-bottom: 1rem;
+    }
+
+    .content h3 {
+      color: var(--ink);
+      font-family: "Google Sans", "Noto Sans", sans-serif;
+      font-size: 1.18rem;
+      letter-spacing: 0;
+      margin: 1.6rem 0 0.65rem;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 1.12rem;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      color: #243852;
+      margin: 1.5rem 0;
+      padding: 0.15rem 0 0.15rem 1rem;
+    }
+
+    .method-grid,
+    .results-grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 1.35rem;
+    }
+
+    .method-card,
+    .result-note {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .method-card strong,
+    .result-note strong {
+      color: var(--ink);
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .method-card p,
+    .result-note p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin: 0;
+    }
+
+    .formula {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 1.4rem 0;
+      overflow-x: auto;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .figure {
+      margin: 1.6rem auto;
+      max-width: 760px;
+    }
+
+    .figure.is-wide {
+      max-width: 1120px;
+    }
+
+    .compact-table {
+      border-collapse: collapse;
+      font-size: 0.96rem;
+      margin: 1.4rem auto 0.5rem;
+      max-width: 720px;
+      width: 100%;
+    }
+
+    .compact-table th,
+    .compact-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 0.55rem 0.6rem;
+      text-align: right;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .compact-table th:first-child,
+    .compact-table td:first-child {
+      text-align: left;
+    }
+
+    .compact-table th {
+      background: var(--soft);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .compact-table .best {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    pre {
+      background: #0f1f36;
+      border-radius: 8px;
+      color: #f5f7fb;
+      font-size: 0.9rem;
+      overflow-x: auto;
+      padding: 1rem;
+    }
+
+    .footer {
+      background: var(--soft);
+      color: var(--muted);
+      padding: 2.25rem 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .method-grid,
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-body {
+        padding-top: 3.25rem;
+      }
+
+      .section {
+        padding: 2.35rem 1rem;
+      }
+
+      .compact-table {
+        font-size: 0.85rem;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .button.is-dark {
+        width: 100%;
+      }
+
+      .link-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .compact-table th,
+      .compact-table td {
+        padding: 0.45rem 0.35rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-wide-readable has-text-centered">
+        <h1 class="publication-title">Set Diffusion</h1>
+        <p class="subtitle publication-subtitle">
+          Interpolating token orderings between autoregression and diffusion for fast and flexible decoding.
+        </p>
+        <div class="publication-authors">
+          <span><a href="https://m-arriola.com/" target="_blank" rel="noopener">Marianne Arriola</a><sup>1</sup></span>
+          <span>&nbsp;&nbsp;</span>
+          <span><a href="https://www.cs.cornell.edu/~kuleshov/" target="_blank" rel="noopener">Volodymyr Kuleshov</a><sup>1</sup></span>
+        </div>
+        <div class="publication-meta"><sup>1</sup>Cornell University</div>
+        <div class="publication-flag">ICML 2026</div>
+        <div class="link-row">
+          <a class="button is-dark" href="static/pdfs/set_diffusion.pdf" target="_blank" rel="noopener">
+            <span class="icon"><i class="fa-solid fa-file-lines"></i></span>
+            <span>Paper</span>
+          </a>
+          <a class="button is-dark" href="https://github.com/kuleshov-group/setdlms" target="_blank" rel="noopener">
+            <span class="icon"><i class="fa-brands fa-github"></i></span>
+            <span>Code</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="teaser">
+      <div class="container is-wide-readable">
+        <img src="static/images/set-diffusion-overview.png" alt="Comparison of block diffusion and set diffusion decoding with a GSM8K speed-accuracy plot">
+        <p class="caption">
+          Set diffusion decodes flexible-position token sets and updates the KV cache after every step, while block diffusion is tied to fixed left-to-right blocks.
+        </p>
+      </div>
+    </section>
+
+    <section class="section is-soft">
+      <div class="container is-readable content">
+        <h2>The One-Line Idea</h2>
+        <p class="lead">
+          Diffusion language models can generate many tokens in parallel, but standard masked diffusion usually gives up variable-length generation and KV caching. Block diffusion recovers some of that structure by generating blocks left-to-right. Set diffusion keeps the cacheability of an autoregressive factorization, but replaces fixed blocks with flexible token sets.
+        </p>
+        <div class="callout">
+          In the manuscript's terms, set diffusion is autoregressive over "flexible-position, flexible-length token sets." The generation order becomes a modeling choice, not a hard-coded block partition.
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container is-readable content">
+        <h2>Why Blocks Are Not Enough</h2>
+        <p>
+          Block diffusion models a sequence as a left-to-right sequence of contiguous blocks. This is already a useful bridge between autoregressive and diffusion language models: tokens inside a block can be denoised in parallel, and completed blocks can be cached.
+        </p>
+        <p>
+          The limitation is that the block structure is rigid. A model cannot naturally insert tokens at arbitrary positions, choose differently sized groups of tokens, or update the cache until the whole current block is finished. That is awkward for infilling and leaves parallelism on the table.
+        </p>
+      </div>
+    </section>
+
+    <section class="section is-soft">
+      <div class="container is-readable content">
+        <h2>Set Diffusion</h2>
+        <p>
+          Set diffusion factorizes generation over token sets \( \sigma_1, \ldots, \sigma_N \). Each set selects positions, and the model predicts the token values at those positions conditioned on earlier revealed sets. Marginalizing over possible set orderings gives:
+        </p>
+        <div class="formula">
+          \[
+            p_\theta(x) =
+            \sum_\sigma \prod_{n=1}^{N}
+            \pi(\sigma_n \mid x_{<\sigma_n})
+            p_\theta(x_{\sigma_n} \mid x_{<\sigma_n}).
+          \]
+        </div>
+        <p>
+          This recovers several familiar cases. Single left-to-right tokens recover autoregression. Uniform random positions recover order-agnostic masked diffusion. Fixed contiguous left-to-right sets recover block diffusion. The useful middle ground is everything in between.
+        </p>
+        <div class="method-grid">
+          <div class="method-card">
+            <strong>Flexible positions</strong>
+            <p>Sets can contain arbitrary positions, enabling insertion and infilling rather than only next-block decoding.</p>
+          </div>
+          <div class="method-card">
+            <strong>Flexible sizes</strong>
+            <p>Larger sets expose more parallelism; smaller sets preserve a stronger autoregressive bias.</p>
+          </div>
+          <div class="method-card">
+            <strong>Cacheable steps</strong>
+            <p>After a set is accepted, its keys and values can be committed before the next inference step.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container is-readable content">
+        <h2>Interpolating Token Orderings</h2>
+        <p>
+          The ordering distribution \( \pi(\sigma) \) is induced by reveal times. Each position \( \ell \) gets a random reveal time \( R_\ell \), with CDF \( \Pr(R_\ell \le \tau) = \alpha^\ell_\tau \). Sorting these reveal times produces a generation order.
+        </p>
+        <p>
+          Position-offset schedules bias generation left-to-right with an active window of width \( w \). Small \( w \) means little overlap between positions, so generation becomes AR-like. Large \( w \) means many positions are eligible together, so generation becomes closer to order-agnostic diffusion.
+        </p>
+        <div class="figure">
+          <img src="static/images/ordering-schedules.png" alt="Reveal-time CDFs interpolating from autoregression through Sliding-Window SetDLM to MDLM">
+          <p class="caption">
+            The decoding width controls how strongly the order favors left-to-right generation.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section is-soft">
+      <div class="container is-readable content">
+        <h2>Sliding-Window SetDLM</h2>
+        <p>
+          SW-SetDLM is the practical instantiation used in the paper. It uses a position-offset ordering distribution, a set-causal transformer, and a sliding output window. At inference time, candidate positions inside the active window are denoised in parallel; accepted tokens are committed and then appended to the KV cache.
+        </p>
+        <p>
+          For efficiency, training specializes to singleton token sets: sample a full ordering, then compute all \( L \) conditional token likelihoods in one causal forward pass,
+        </p>
+        <div class="formula">
+          \[
+            -\log p_\theta(x)
+            \le
+            -\mathbb{E}_{\sigma \sim \pi}
+            \sum_{n=1}^{L}
+            \log p_\theta(x_{\sigma_n} \mid x_{<\sigma_n}).
+          \]
+        </div>
+        <p>
+          This keeps training token-efficient while still teaching the model to decode under position-biased orders. At inference, SW-SetDLM can decode flexible-position sets with a left-to-right bias rather than being locked to fixed block boundaries.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container is-wide-readable content">
+        <h2>Results</h2>
+        <p class="lead">
+          The main empirical story is the speed-quality tradeoff. On GSM8K, SW-SetDLM improves the diffusion Pareto frontier relative to block diffusion, with higher accuracy and higher throughput at comparable prediction budgets.
+        </p>
+        <div class="figure">
+          <img src="static/images/gsm8k-tradeoff.png" alt="GSM8K speed-accuracy tradeoff showing SW-SetDLM above block diffusion">
+        </div>
+        <table class="compact-table" aria-label="GSM8K compact result table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>PPL (&darr;)</th>
+              <th>0-shot pass@1 (&uarr;)</th>
+              <th>Tput (&uarr;)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>AR Transformer</td>
+              <td>1.25</td>
+              <td>75.74</td>
+              <td>67.16</td>
+            </tr>
+            <tr>
+              <td>MDLM</td>
+              <td>&le; 2.10</td>
+              <td>6.37</td>
+              <td>&ge; 24.48</td>
+            </tr>
+            <tr>
+              <td>BD3LM, S = 4</td>
+              <td>&le; 1.41</td>
+              <td>63.53</td>
+              <td>&ge; 55.39</td>
+            </tr>
+            <tr>
+              <td><strong>SW-SetDLM, S &le; 8</strong></td>
+              <td>&le; 1.42</td>
+              <td class="best">66.41</td>
+              <td class="best">&ge; 60.42</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="results-grid">
+          <div class="result-note">
+            <strong>Infilling</strong>
+            <p>Flexible-position sets improve ROCStories infilling over block diffusion while decoding faster.</p>
+          </div>
+          <div class="result-note">
+            <strong>Summarization</strong>
+            <p>On CNN/DailyMail, SW-SetDLM keeps competitive ROUGE and improves throughput over block diffusion.</p>
+          </div>
+          <div class="result-note">
+            <strong>Generation</strong>
+            <p>On unconditional generation, set diffusion improves the quality-speed tradeoff among diffusion language models.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section is-soft" id="BibTeX">
+      <div class="container is-readable content">
+        <h2>BibTeX</h2>
+<pre><code>@inproceedings{arriola2026setdiffusion,
+  title = {Set Diffusion: Interpolating Token Orderings Between Autoregression and Diffusion for Fast and Flexible Decoding},
+  author = {Arriola, Marianne and Kuleshov, Volodymyr},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
+  year = {2026}
+}</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container is-readable">
+      <p>
+        This page follows the structure of the <a href="https://github.com/mariannearr/bd3lms" target="_blank" rel="noopener">BD3-LMs project page</a>, which was adapted from the Academic Project Page Template and the Nerfies project page.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
