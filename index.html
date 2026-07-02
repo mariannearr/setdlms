@@ -836,7 +836,7 @@
       <div class="container is-readable content">
         <h2>Sliding-Window SetDLM</h2>
         <p>
-          SW-SetDLM is the practical instantiation used in the paper. It combines a position-offset ordering distribution, a factorized token-set likelihood, and a set-causal transformer. At inference time, a sliding output window selects positions whose active intervals contain the current ordering time; those candidates are denoised in parallel, accepted tokens are committed, and their keys and values are appended to the cache before the next step.
+          SW-SetDLM is a practical instantiation of set diffusion. It combines a position-offset ordering distribution, a factorized token-set likelihood, and a set-causal transformer. At inference time, a sliding output window selects positions whose active intervals contain the current ordering time; those candidates are denoised in parallel, accepted tokens are committed, and their keys and values are appended to the cache before the next step.
         </p>
         <p>
           For low-variance, token-efficient training, SW-SetDLM specializes to singleton token sets. It samples a full ordering, then computes all \( L \) conditional token likelihoods in one causal forward pass,
@@ -905,7 +905,7 @@
         </div>
         <h3>Infilling</h3>
         <p>
-          Infilling directly tests flexible-position decoding. The paper evaluates 1,871 five-sentence ROCStories examples, masking one or three middle sentences and filling the gap from the remaining context. Against BD3LM, SW-SetDLM raises one-sentence ROUGE-L from 8.6 to 10.9 while increasing throughput from &ge; 105.8 to &ge; 132.0 tokens/sec; for three-sentence infilling, ROUGE-L rises from 11.1 to 13.2 with throughput &ge; 123.1 versus &ge; 114.2. MDLM reaches higher ROUGE, but is substantially slower because it lacks KV caching and recomputes the full 1024-token context at every denoising step.
+          Infilling directly tests flexible-position decoding. On 1,871 five-sentence ROCStories examples, the task masks one or three middle sentences and fills the gap from the remaining context. Against BD3LM, SW-SetDLM raises one-sentence ROUGE-L from 8.6 to 10.9 while increasing throughput from &ge; 105.8 to &ge; 132.0 tokens/sec; for three-sentence infilling, ROUGE-L rises from 11.1 to 13.2 with throughput &ge; 123.1 versus &ge; 114.2. MDLM reaches higher ROUGE, but is substantially slower because it lacks KV caching and recomputes the full 1024-token context at every denoising step.
         </p>
         <div class="table-scroll" role="region" aria-label="ROCStories infilling results table" tabindex="0">
           <table class="compact-table is-wide-result" aria-label="ROCStories infilling ROUGE and throughput results">
@@ -1006,7 +1006,7 @@
           </table>
         </div>
         <p class="caption">
-          ROCStories infilling from Table 2. "Infill k/5" fills k middle sentences given the rest; diffusion throughputs are lower bounds because the paper uses the maximum number of sampling steps.
+          ROCStories infilling results. "Infill k/5" fills k middle sentences given the rest; diffusion throughputs are lower bounds because sampling uses the maximum number of denoising steps.
         </p>
         <div class="results-grid">
           <div class="result-note">
