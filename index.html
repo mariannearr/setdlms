@@ -522,7 +522,7 @@
 
     .compact-table {
       border-collapse: collapse;
-      color: #1f2937;
+      color: #111827;
       font-size: 0.96rem;
       margin: 1.4rem auto 0.5rem;
       max-width: 720px;
@@ -555,11 +555,21 @@
     .compact-table th,
     .compact-table td {
       border-bottom: 1px solid var(--line);
-      color: #1f2937;
+      color: #111827 !important;
       padding: 0.55rem 0.6rem;
       text-align: right;
       vertical-align: middle;
       white-space: nowrap;
+    }
+
+    .compact-table th *,
+    .compact-table td *,
+    .compact-table strong,
+    .compact-table span,
+    .compact-table a,
+    .compact-table a:visited,
+    .compact-table a:hover {
+      color: #111827 !important;
     }
 
     .compact-table th:first-child,
@@ -569,13 +579,13 @@
 
     .compact-table th {
       background: var(--soft);
-      color: #111827;
+      color: #111827 !important;
       font-weight: 700;
     }
 
     .compact-table .group-row td {
       background: #f8fafc;
-      color: #111827;
+      color: #111827 !important;
       font-size: 0.8rem;
       font-weight: 700;
       letter-spacing: 0;
@@ -584,7 +594,7 @@
     }
 
     .compact-table .best {
-      color: #111827;
+      color: #111827 !important;
       font-weight: 700;
     }
 
