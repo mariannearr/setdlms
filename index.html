@@ -400,9 +400,6 @@
         <p class="lead">
           Diffusion language models can generate many tokens in parallel, but standard masked diffusion usually gives up variable-length generation and KV caching. Block diffusion recovers some of that structure by generating blocks left-to-right. Set diffusion keeps the cacheability of an autoregressive factorization, but replaces fixed blocks with flexible token sets.
         </p>
-        <div class="callout">
-          In the manuscript's terms, set diffusion is autoregressive over "flexible-position, flexible-length token sets." The generation order becomes a modeling choice, not a hard-coded block partition.
-        </div>
       </div>
     </section>
 
