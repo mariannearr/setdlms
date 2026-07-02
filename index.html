@@ -155,7 +155,6 @@
       padding: 2.25rem 1.5rem 1.5rem;
     }
 
-    .teaser img,
     .figure img {
       display: block;
       height: auto;
@@ -163,11 +162,80 @@
       max-width: 100%;
     }
 
-    .teaser img {
+    .teaser-compare {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 0 auto;
+      max-width: 1120px;
+    }
+
+    .teaser-method {
+      text-align: center;
+    }
+
+    .teaser-header {
+      color: var(--ink);
+      font-family: "Google Sans", "Noto Sans", sans-serif;
+      font-size: clamp(1.2rem, 2vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0;
+      margin-bottom: 0.7rem;
+    }
+
+    .teaser-items {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem 1rem;
+      justify-content: center;
+      margin-bottom: 0.85rem;
+    }
+
+    .check-row {
+      align-items: center;
+      display: inline-flex;
+      font-size: 1rem;
+      font-weight: 650;
+      gap: 0.25rem;
+      line-height: 1.2;
+    }
+
+    .check-row.is-good {
+      color: #228B22;
+    }
+
+    .check-row.is-bad {
+      color: #cc0000;
+    }
+
+    .teaser video {
+      background: #ffffff;
       border: 1px solid var(--line);
       border-radius: 8px;
+      display: block;
+      height: auto;
+      margin: 0 auto;
+      max-width: 100%;
       box-shadow: 0 18px 48px rgba(20, 38, 66, 0.10);
-      width: min(100%, 1120px);
+      width: 100%;
+    }
+
+    .gold-legend {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      grid-column: 1 / -1;
+      justify-content: center;
+      margin-top: 0.2rem;
+    }
+
+    .gold-strip {
+      background: linear-gradient(90deg, #f0b914, #f8d05a 45%, #f7e9be);
+      border-radius: 4px;
+      height: 0.8rem;
+      width: min(320px, 42vw);
     }
 
     .caption {
@@ -316,7 +384,8 @@
 
     @media (max-width: 900px) {
       .method-grid,
-      .results-grid {
+      .results-grid,
+      .teaser-compare {
         grid-template-columns: 1fr;
       }
 
@@ -341,6 +410,10 @@
       .link-row {
         align-items: stretch;
         flex-direction: column;
+      }
+
+      .gold-strip {
+        width: min(220px, 80vw);
       }
 
       .compact-table th,
@@ -387,7 +460,41 @@
   <main>
     <section class="teaser">
       <div class="container is-wide-readable">
-        <img src="static/images/set-diffusion-overview.png" alt="Comparison of block diffusion and set diffusion decoding with a GSM8K speed-accuracy plot">
+        <div class="teaser-compare">
+          <div class="teaser-method">
+            <h2 class="teaser-header">Block Diffusion</h2>
+            <div class="teaser-items" aria-label="Block Diffusion checklist">
+              <div class="check-row is-bad">
+                <span aria-hidden="true">X</span>
+                <span>Fixed block partitioning</span>
+              </div>
+              <div class="check-row is-bad">
+                <span aria-hidden="true">X</span>
+                <span>KV-cache updates only after blocks</span>
+              </div>
+            </div>
+            <video src="static/images/bd3lm.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Block diffusion decoding animation"></video>
+          </div>
+          <div class="teaser-method">
+            <h2 class="teaser-header">Set Diffusion (Ours)</h2>
+            <div class="teaser-items" aria-label="Set Diffusion checklist">
+              <div class="check-row is-good">
+                <span aria-hidden="true">&#10003;</span>
+                <span>Flexible position-biased decoding</span>
+              </div>
+              <div class="check-row is-good">
+                <span aria-hidden="true">&#10003;</span>
+                <span>KV-cache updates after every step</span>
+              </div>
+            </div>
+            <video src="static/images/setdlm.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Set diffusion decoding animation"></video>
+          </div>
+          <div class="gold-legend" aria-label="Decoding priority legend">
+            <span>More likely to decode</span>
+            <span class="gold-strip" aria-hidden="true"></span>
+            <span>Less likely to decode</span>
+          </div>
+        </div>
         <p class="caption">
           Set diffusion decodes flexible-position token sets and updates the KV cache after every step, while block diffusion is tied to fixed left-to-right blocks.
         </p>
