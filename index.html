@@ -761,7 +761,7 @@
 
     <section class="section is-soft">
       <div class="container is-readable content">
-        <h2>The One-Line Idea</h2>
+        <h2>Core Idea</h2>
         <p class="lead">
           Diffusion language models can generate many tokens in parallel, but standard masked diffusion is usually fixed-length and cannot reuse a KV cache. Block diffusion restores variable-length, cacheable generation by decoding contiguous blocks left-to-right. Set diffusion keeps the autoregressive factorization, but replaces fixed blocks with flexible-position, flexible-length token sets.
         </p>
@@ -860,7 +860,7 @@
       <div class="container is-wide-readable content">
         <h2>Results</h2>
         <p class="lead">
-          The main empirical story is a better speed-quality tradeoff. On GSM8K, SW-SetDLM improves the diffusion Pareto frontier relative to block diffusion, with higher accuracy and higher throughput at comparable prediction budgets.
+          On GSM8K, SW-SetDLM improves the diffusion Pareto frontier relative to block diffusion, with higher accuracy and higher throughput at comparable prediction budgets.
         </p>
         <div class="figure">
           <img src="static/images/gsm8k-tradeoff.png?v=help-pdf-1" alt="GSM8K speed-accuracy tradeoff showing SW-SetDLM above block diffusion">
